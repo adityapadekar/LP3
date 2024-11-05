@@ -1,73 +1,91 @@
-#include <iostream>
-#include <vector>
-#include <set>
-#include <string>
-#include <functional>
-using namespace std;
+#include <bits/stdc++.h>
 
-vector<vector<string>> solveNQueens(int n, int first_queen_col) {
-    set<int> col;
-    set<int> posDiag;
-    set<int> negDiag;
-    
-    vector<vector<string>> res;
-    vector<vector<string>> board(n, vector<string>(n, "."));
-    
-    std::function<void(int)> backtrack;
-    backtrack = [&](int r) {
-        if (r == n) {
-            vector<string> solution;
-            for (const auto& row : board) {
-                string rowStr;
-                for (const auto& cell : row) {
-                    rowStr += cell;
-                }
-                solution.push_back(rowStr);
-            }
-            res.push_back(solution);
-            return;
+class EightQueensSolver {
+private:
+    const int BOARD_SIZE = 8;
+    int placedRow;
+    int placedCol;
+    std::vector<std::vector<char>> board;
+
+    bool isSafe(int row, int col) {
+        for (int i{}; i < row; i++) {
+            if (board[i][col] == 'Q') return false;
         }
-        
-        for (int c = 0; c < n; c++) {
-            if (col.count(c) || posDiag.count(r + c) || negDiag.count(r - c)) {
-                continue;
-            }
-            
-            col.insert(c);
-            posDiag.insert(r + c);
-            negDiag.insert(r - c);
-            board[r][c] = "Q";
-            
-            backtrack(r + 1);
-            
-            col.erase(c);
-            posDiag.erase(r + c);
-            negDiag.erase(r - c);
-            board[r][c] = ".";
+
+        for (int i{ row }, j{ col }; i >= 0 && j >= 0; i--, j--) {
+            if (board[i][j] == 'Q') return false;
         }
-    };
-    
-    col.insert(first_queen_col);
-    posDiag.insert(0 + first_queen_col);
-    negDiag.insert(0 - first_queen_col);
-    board[0][first_queen_col] = "Q";
-    
-    backtrack(1);
-    return res;
-}
+
+        for (int i{ row }, j{ col }; i >= 0 && j < BOARD_SIZE; i--, j++) {
+            if (board[i][j] == 'Q') return false;
+        }
+
+        return true;
+    }
+
+    bool solveUtil(int row) {
+        if (row == BOARD_SIZE) return true;
+
+        if (row == placedRow) {
+            if (isSafe(placedRow, placedCol)) {
+                board[placedRow][placedCol] = 'Q';
+                return solveUtil(row + 1);
+            }
+
+            return false;
+        }
+
+        for (int i{}; i < BOARD_SIZE; i++) {
+            if (isSafe(row, i)) {
+                board[row][i] = 'Q';
+
+                if (solveUtil(row + 1)) return true;
+
+                board[row][i] = '.';
+            }
+        }
+
+        return false;
+    }
+
+public:
+    EightQueensSolver() {
+        board.resize(BOARD_SIZE, std::vector<char>(BOARD_SIZE, '.'));
+    }
+
+
+    bool  solve(int row, int col) {
+        if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
+            std::cout << "Invalid first queen position!" << std::endl;
+            return false;
+        }
+
+        placedRow = row;
+        placedCol = col;
+
+        return solveUtil(0);
+    }
+
+    void printSolution() {
+        std::cout << "8-Queens Solution:\n";
+        for (const auto& row : board) {
+            for (char cell : row) {
+                std::cout << cell << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+};
 
 int main() {
-    int n = 8;
-    int first_queen_col = 1;
-    
-    vector<vector<string>> solutions = solveNQueens(n, first_queen_col);
-    for (const string& row : solutions[0]) {
-        for (int i = 0; i < row.length(); i++) {
-            cout << row[i];
-            if (i < row.length() - 1) cout << " ";
-        }
-        cout << endl;
+    EightQueensSolver solver;
+
+    if (solver.solve(3, 3)) {
+        solver.printSolution();
     }
-    
+    else {
+        std::cout << "Solution does not exist!" << std::endl;
+    }
+
     return 0;
 }

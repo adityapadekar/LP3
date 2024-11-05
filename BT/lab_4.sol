@@ -1,130 +1,81 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.6.2 <0.9.0;
+pragma solidity ^0.8.0;
 
-contract TestPayable {
-    uint x;
-    uint y;
-    // This function is called for all messages sent to
-    // this contract, except plain Ether transfers
-    // (there is no other function except the receive function).
-    // Any call with non-empty calldata to this contract will execute
-    // the fallback function (even if Ether is sent along with the call).
-    fallback() external payable {
-        x = 1;
-        y = msg.value;
+contract SimpleStudentManagement {
+    struct Student {
+        string name;
+        uint256 age;
+        string major;
+        uint256[] grades;
     }
-
-    // This function is called for plain Ether transfers, i.e.
-    // for every call with empty calldata.
-    receive() external payable {
-        x = 2;
-        y = msg.value;
-    }
-}
-
-contract StudentRegister {
-    mapping(uint => Student) private students;
+    
     address public owner;
-
-    constructor() public payable {
-        /* Set the owner to the creator of this contract */
+    mapping(uint256 => Student) public students;
+    uint256 public studentCount;
+    
+    event StudentAdded(uint256 indexed id, string name);
+    event GradeAdded(uint256 indexed id, uint256 grade);
+    event FallbackCalled(address sender, uint256 value);
+    
+    constructor() {
         owner = msg.sender;
     }
-
-    /// Only the `owner` can access - modifier
+    
     modifier onlyOwner() {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "Only owner can call this");
         _;
     }
-
-    /// Student structure
-    struct Student {
-        uint studentId;
-        string name;
-        /* Marks array */
-        uint[] marks;
-        uint percentage;
-        bool exist;
+    
+    function addStudent(
+        string memory _name,
+        uint256 _age,
+        string memory _major
+    ) public onlyOwner returns (uint256) {
+        uint256 newId = studentCount;
+        students[newId] = Student(_name, _age, _major, new uint256[](0));
+        
+        emit StudentAdded(newId, _name);
+        studentCount++;
+        return newId;
     }
-
-    /// @notice Register a student in the record
-    /// @return The percentage of the student
-    function register(
-        uint studentId,
+    
+    function addGrade(uint256 _studentId, uint256 _grade) public onlyOwner {
+        require(_studentId < studentCount, "Student does not exist");
+        require(_grade <= 100, "Grade must be between 0 and 100");
+        
+        students[_studentId].grades.push(_grade);
+        emit GradeAdded(_studentId, _grade);
+    }
+    
+    function getStudent(uint256 _studentId) public view returns (
         string memory name,
-        uint[] memory marks
-    ) public onlyOwner returns (uint) {
-        require(
-            students[studentId].exist == false,
-            "Student data already exist."
-        );
-        require(
-            marks.length == 3,
-            "Only 3 subjects are available. Array length should be 3."
-        );
-
-        uint totalMarks = getArraySum(marks);
-
-        uint percentage = (totalMarks * 100) / 150;
-
-        students[studentId] = Student(studentId, name, marks, percentage, true);
-
-        return percentage;
+        uint256 age,
+        string memory major,
+        uint256[] memory grades
+    ) {
+        require(_studentId < studentCount, "Student does not exist");
+        Student storage student = students[_studentId];
+        return (student.name, student.age, student.major, student.grades);
     }
-
-    /// @notice Get student details from the record
-    /// @return Student id, name, marks, percentage of the student
-    function getStudentDetails(
-        uint studentId
-    ) public view returns (uint, string memory, uint[] memory, uint) {
-        require(
-            students[studentId].exist == true,
-            "No student data available."
-        );
-
-        /* Access student from the registed using studentId */
-        Student memory student = students[studentId];
-
-        return (
-            student.studentId,
-            student.name,
-            student.marks,
-            student.percentage
-        );
-    }
-
-    /// @notice Get sum of the array
-    /// @return sum of the array
-    function getArraySum(uint[] memory array) private pure returns (uint sum) {
-        sum = 0;
-        for (uint i = 0; i < array.length; i++) {
-            require(
-                0 <= array[i] && array[i] <= 100,
-                "Marks should be between 0 and 100."
-            );
-            sum += array[i];
+    
+    function getAverageGrade(uint256 _studentId) public view returns (uint256) {
+        require(_studentId < studentCount, "Student does not exist");
+        
+        uint256[] storage grades = students[_studentId].grades;
+        if (grades.length == 0) return 0;
+        
+        uint256 sum = 0;
+        for (uint256 i = 0; i < grades.length; i++) {
+            sum += grades[i];
         }
+        return sum / grades.length;
     }
 
-    function callTestPayable(TestPayable test) public returns (bool) {
-        (bool success, ) = address(test).call(
-            abi.encodeWithSignature("nonExistingFunction()")
-        );
-        require(success);
-        // results in test.x becoming == 1 and test.y becoming 0.
-        (success, ) = address(test).call{value: 1}(
-            abi.encodeWithSignature("nonExistingFunction()")
-        );
-        require(success);
-        // results in test.x becoming == 1 and test.y becoming 1.
+    fallback() external payable {
+        emit FallbackCalled(msg.sender, msg.value);
+    }
 
-        // If someone sends Ether to that contract, the receive function in TestPayable will be called.
-        // Since that function writes to storage, it takes more gas than is available with a
-        // simple ``send`` or ``transfer``. Because of that, we have to use a low-level call.
-        (success, ) = address(test).call{value: 2 ether}("");
-        require(success);
-        // results in test.x becoming == 2 and test.y becoming 2 ether.
-
-        return true;
+    receive() external payable {
+        emit FallbackCalled(msg.sender, msg.value);
     }
 }

@@ -1,56 +1,47 @@
-#include <iostream>
-#include <vector>
-using namespace std;
+#include <bits/stdc++.h>
 
 class Item {
 public:
     int profit;
     int weight;
 
-    Item(int p, int w) {
-        profit = p;
-        weight = w;
-    }
+    Item(int p, int w) :profit(p), weight(w) {}
 };
 
-int knapsack01(int w, vector<Item>& arr) {
-    int n = arr.size();
-    
-    vector<vector<int>> dp(n + 1, vector<int>(w + 1, 0));
-    
-    for (int i = 1; i <= n; i++) {
-        for (int j = 1; j <= w; j++) {
-            if (arr[i - 1].weight <= j) {
-                dp[i][j] = max(arr[i - 1].profit + dp[i - 1][j - arr[i - 1].weight], dp[i - 1][j]);
-            } else {
-                dp[i][j] = dp[i - 1][j];
+int knapsack(std::vector<Item>& items, int W) {
+    int n = items.size();
+    std::vector<int> prev(W + 1, 0);
+
+    for (int i = items[0].weight; i <= W; i++) {
+        prev[i] = items[0].profit;
+    }
+
+    for (int i = 1; i < n; i++) {
+        for (int j = W; j >= 0; j--) {
+            int notTaken = prev[j];
+            int taken = INT_MIN;
+
+            if (items[i].weight <= j) {
+                taken = items[i].profit + prev[j - items[i].weight];
             }
+
+            prev[j] = std::max(notTaken, taken);
         }
     }
-    
-    return dp[n][w];
+
+    return prev[W];
 }
 
 int main() {
-    int n;
-    cout << "Enter number of items-\n";
-    cin >> n;
+    std::vector<Item> items = {
+        Item(5,1),
+        Item(4,2),
+        Item(8,4),
+        Item(6,5)
+    };
 
-    vector<Item> arr;
-    for (int i = 0; i < n; i++) {
-        int profit, weight;
-        cout << "Enter profit of item " << i + 1 << "-\n";
-        cin >> profit;
-        cout << "Enter weight of item " << i + 1 << "-\n";
-        cin >> weight;
-        arr.push_back(Item(profit, weight));
-    }
-
-    int w;
-    cout << "Enter capacity of knapsack-\n";
-    cin >> w;
-
-    cout << "Maximum value in knapsack: " << knapsack01(w, arr) << endl;
+    std::cout << knapsack(items, 5);
 
     return 0;
 }
+
